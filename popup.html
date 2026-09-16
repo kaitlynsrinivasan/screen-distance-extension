@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Screen Distance Reminder</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="dot" id="statusDot"></span>
+      <h1>Screen Distance</h1>
+    </header>
+
+    <p class="lede">Watches your distance from the screen using your webcam. Nothing is ever recorded or sent anywhere.</p>
+
+    <button id="grantBtn" class="primary">Grant camera access</button>
+
+    <div class="row">
+      <label for="enabledToggle">Reminders on</label>
+      <input type="checkbox" id="enabledToggle" checked />
+    </div>
+
+    <div class="row">
+      <label for="sensitivity">Sensitivity</label>
+      <input type="range" id="sensitivity" min="1" max="5" value="3" disabled />
+    </div>
+
+    <div class="summary">
+      <span id="todayCount">0</span>
+      <span class="summaryLabel">reminders today</span>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
