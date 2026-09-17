@@ -41,9 +41,9 @@ is looking at.
 
 ## Privacy
 Camera frames are processed entirely on-device and are never transmitted,
-stored, or sent to any server. Only lightweight usage events (see
-`RESUME-BULLETS.md` / analytics plan) are logged for product analytics —
-never video or images.
+stored, or sent to any server. Only lightweight usage events (see the
+analytics plan, step 3) are logged for product analytics — never video or
+images.
 
 ## Local development
 1. `chrome://extensions` → enable "Developer mode" → "Load unpacked" → select this folder.
