@@ -5,9 +5,9 @@ on-device webcam face detection, and nudges you with a native notification
 when you're too close for too long. No video frame ever leaves your device.
 
 ## Status
-🚧 Step 2 in progress: face detection pipeline (camera → model → distance
-estimate) is working end to end. Continuous monitoring, calibration, and the
-actual reminder-triggering logic are still to come.
+🚧 Step 2 in progress: face detection pipeline runs continuously (checking
+distance roughly once per second). Calibration and the actual
+reminder-triggering logic are still to come.
 
 ## Architecture
 
@@ -74,7 +74,10 @@ images.
 ## Roadmap
 - [x] Step 1: project scaffolding, manifest, popup UI
 - [x] Step 2a: face-api.js integrated, single-frame detection confirmed working
-- [ ] Step 2b: continuous detection loop, calibration, sustained-closeness logic, wired to real notifications
+- [x] Step 2b: continuous detection loop (checks distance every ~1s)
+- [ ] Step 2c: calibration (save a personal baseline distance)
+- [ ] Step 2d: sustained-closeness logic (avoid false alarms from one flickery frame)
+- [ ] Step 2e: wire the real `TOO_CLOSE_DETECTED` message to background.js
 - [ ] Step 3: PostHog analytics wiring (5 events from the spec)
 - [ ] Step 4: sensitivity setting + daily summary wired up fully
 - [ ] Step 5: Chrome Web Store listing + launch

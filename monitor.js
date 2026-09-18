@@ -26,17 +26,28 @@ async function startCamera() {
   await video.play();
 }
 
-// TEMPORARY, step-2-in-progress: same one-shot test as before — proves the
-// pipeline works in this new window before we build the continuous loop.
-async function testDetection() {
-  const detection = await faceapi.detectSingleFace(
-    video,
-    new faceapi.TinyFaceDetectorOptions()
-  );
-  if (detection) {
-    statusText.textContent = `Face detected — box width: ${detection.box.width.toFixed(1)}px`;
-  } else {
-    statusText.textContent = "No face detected — make sure you're visible to the camera.";
+// Guards against two detection checks overlapping if one ever takes longer
+// than the interval between checks (unlikely with this small a model, but
+// cheap to protect against).
+let isChecking = false;
+
+async function checkDistance() {
+  if (isChecking) return;
+  isChecking = true;
+  try {
+    const detection = await faceapi.detectSingleFace(
+      video,
+      new faceapi.TinyFaceDetectorOptions()
+    );
+    if (detection) {
+      statusText.textContent = `Face detected — box width: ${detection.box.width.toFixed(1)}px`;
+    } else {
+      statusText.textContent = "No face detected — make sure you're visible to the camera.";
+    }
+  } catch (err) {
+    console.error("[monitor] detection error:", err);
+  } finally {
+    isChecking = false;
   }
 }
 
@@ -52,7 +63,7 @@ async function startMonitoring() {
     grantBtn.style.display = "none";
     await chrome.storage.local.set({ cameraGranted: true });
 
-    setTimeout(testDetection, 1000);
+    setInterval(checkDistance, 1000);
   } catch (err) {
     console.error("[monitor] setup failed:", err);
     // Camera access isn't available yet (or was revoked) — show the button
