@@ -1,41 +1,10 @@
 // background.js — Manifest V3 service worker
 //
-// Why this file is small: MV3 service workers can be killed and restarted by
-// Chrome at any time and have no DOM access, so they can't touch getUserMedia
-// or run face-detection code directly. This file's only jobs are:
-//   1. Keep an "offscreen document" alive to do the actual camera/ML work
-//      (offscreen.js) — see the architecture note in README.md.
-//   2. Relay messages from the offscreen document into user-visible things
-//      (native notifications) and, later, analytics events.
+// Since camera work now happens in monitor.js (a real window), this file
+// goes back to being a pure dispatcher: it listens for messages from
+// monitor.js and turns them into native OS notifications. It no longer
+// needs to create or manage an offscreen document.
 
-const OFFSCREEN_DOCUMENT_PATH = "offscreen.html";
-
-// Ensures exactly one offscreen document exists. Safe to call repeatedly.
-async function ensureOffscreenDocument() {
-  const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: ["OFFSCREEN_DOCUMENT"],
-  });
-
-  if (existingContexts.length > 0) {
-    return;
-  }
-
-  await chrome.offscreen.createDocument({
-    url: OFFSCREEN_DOCUMENT_PATH,
-    reasons: ["USER_MEDIA"],
-    justification: "Access webcam to estimate distance from screen via on-device face detection.",
-  });
-}
-
-// Create the offscreen document as soon as the extension starts up.
-chrome.runtime.onStartup.addListener(() => {
-  ensureOffscreenDocument();
-});
-chrome.runtime.onInstalled.addListener(() => {
-  ensureOffscreenDocument();
-});
-
-// Messages coming from offscreen.js (the face-detection loop).
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.target !== "background") return;
 

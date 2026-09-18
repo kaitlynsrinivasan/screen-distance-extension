@@ -5,8 +5,9 @@ on-device webcam face detection, and nudges you with a native notification
 when you're too close for too long. No video frame ever leaves your device.
 
 ## Status
-🚧 Step 1 of build: project scaffolding + architecture in place. Face
-detection and distance estimation land in step 2.
+🚧 Step 2 in progress: face detection pipeline (camera → model → distance
+estimate) is working end to end. Continuous monitoring, calibration, and the
+actual reminder-triggering logic are still to come.
 
 ## Architecture
 
@@ -14,24 +15,44 @@ detection and distance estimation land in step 2.
 no DOM and are killed/restarted by Chrome at will, so they can't call
 `getUserMedia()` or run a face-detection loop directly.
 
-**The solution:** an [offscreen document](https://developer.chrome.com/docs/extensions/reference/api/offscreen)
-(`offscreen.html` / `offscreen.js`) — a hidden page Chrome keeps alive
-specifically for tasks like camera access that need a real DOM. It runs the
-camera stream and (in step 2) the face-detection loop, then messages
-`background.js` when the user is too close. `background.js` turns that into
-a native OS notification via `chrome.notifications`.
+**First attempt (abandoned):** an [offscreen document](https://developer.chrome.com/docs/extensions/reference/api/offscreen)
+(`offscreen.html` / `offscreen.js`) — a hidden page Chrome keeps alive for
+tasks like camera access that need a real DOM, without opening a visible
+window. This is the officially documented pattern for this kind of problem,
+but in practice it hit a real, under-documented Chrome limitation: camera
+permission granted elsewhere in the extension did not reliably carry over
+into the offscreen document's context, consistently failing with
+`NotAllowedError: Permission dismissed` even after permission was properly
+granted via a real, visible tab. This wasn't unique to this project — other
+developers have reported the identical failure for both camera and
+microphone access in offscreen documents. Since we can't ship an extension
+that requires end users to manually override a hidden Chrome settings page
+just to make the camera work, this approach was scrapped rather than
+worked around.
+
+**Current design:** camera access and face detection run inside
+`monitor.html` / `monitor.js` — a small, real, visible extension window
+(opened via `chrome.windows.create`) rather than a hidden offscreen
+document. A normal window doesn't have the permission-persistence problem:
+the first time it opens, it shows a "Grant camera access" button (a real
+click, which the browser's permission system requires); every time after
+that, Chrome silently reuses the granted permission, the same way it does
+for any website you've already allowed. The trade-off, stated plainly: this
+window needs to stay open (it can be minimized) for monitoring to keep
+running — it's no longer a fully invisible background process the way the
+offscreen approach would have been if it had worked.
 
 ```
-popup.js  --(one-time getUserMedia prompt for permission)-->  browser
+popup.js  --(chrome.windows.create)-->  opens monitor.html
                     |
                     v
-offscreen.js  --(camera stream + face detection loop, step 2)-->
-                    |  postMessage: "TOO_CLOSE_DETECTED"
+monitor.js  --(camera stream + face detection loop, step 2)-->
+                    |  chrome.runtime.sendMessage: "TOO_CLOSE_DETECTED"
                     v
 background.js  --(chrome.notifications.create)-->  native OS notification
 ```
 
-**Alternative considered:** inject a banner directly into every open tab via
+**Alternative also considered, earlier:** inject a banner directly into every open tab via
 a content script. Rejected because (a) it requires broad host permissions,
 which slows Chrome Web Store review and looks scarier in the install
 prompt, and (b) arbitrary sites' CSPs can interfere with injected UI.
@@ -47,11 +68,13 @@ images.
 
 ## Local development
 1. `chrome://extensions` → enable "Developer mode" → "Load unpacked" → select this folder.
-2. Click the extension icon, then "Grant camera access" to trigger the permission prompt.
+2. Click the extension icon, then click the button to open the monitoring window.
+3. In that window, click "Grant camera access" the first time; it's remembered after that.
 
 ## Roadmap
-- [x] Step 1: project scaffolding, manifest, offscreen architecture
-- [ ] Step 2: face detection + distance estimation + calibration
+- [x] Step 1: project scaffolding, manifest, popup UI
+- [x] Step 2a: face-api.js integrated, single-frame detection confirmed working
+- [ ] Step 2b: continuous detection loop, calibration, sustained-closeness logic, wired to real notifications
 - [ ] Step 3: PostHog analytics wiring (5 events from the spec)
 - [ ] Step 4: sensitivity setting + daily summary wired up fully
 - [ ] Step 5: Chrome Web Store listing + launch

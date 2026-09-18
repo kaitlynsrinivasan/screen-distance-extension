@@ -1,36 +1,27 @@
-// popup.js — settings UI + the one-time camera permission grant.
+// popup.js — settings UI + a button to open the monitoring window.
 //
-// Why the permission request lives here and not in offscreen.js: Chrome
-// requires a user gesture on a *visible* page to show the camera permission
-// prompt. This popup is visible and the button click is a user gesture, so
-// this is the only place that can trigger the initial prompt.
+// Note: this button's job is just "open the monitoring window" — it's a
+// repeatable action, not a one-time setup step. The actual camera
+// permission grant happens inside monitor.js itself, the first time that
+// window opens without prior access.
 
 const grantBtn = document.getElementById("grantBtn");
 const statusDot = document.getElementById("statusDot");
 const enabledToggle = document.getElementById("enabledToggle");
 const todayCount = document.getElementById("todayCount");
 
-grantBtn.addEventListener("click", async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    // We don't need the stream here — we only wanted the permission prompt.
-    // Immediately stop it so the camera light turns off.
-    stream.getTracks().forEach((track) => track.stop());
-
-    grantBtn.textContent = "Camera access granted";
-    grantBtn.disabled = true;
-    statusDot.classList.add("active");
-
-    await chrome.storage.local.set({ cameraGranted: true });
-  } catch (err) {
-    grantBtn.textContent = "Camera access denied — click to retry";
-    console.error("[popup] camera permission denied:", err);
-  }
+grantBtn.addEventListener("click", () => {
+  chrome.windows.create({
+    url: chrome.runtime.getURL("monitor.html"),
+    type: "popup",
+    width: 340,
+    height: 280,
+  });
 });
 
 enabledToggle.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: enabledToggle.checked });
-  // TODO (step 3): tell the offscreen document to pause/resume detection.
+  // TODO (step 3): tell monitor.js to pause/resume detection.
 });
 
 // Restore saved state when the popup opens.
@@ -38,11 +29,14 @@ enabledToggle.addEventListener("change", async () => {
   const { cameraGranted, enabled, todayReminderCount } =
     await chrome.storage.local.get(["cameraGranted", "enabled", "todayReminderCount"]);
 
+  // Reflect whether camera access is currently working, but keep the button
+  // clickable either way — reopening the monitor window is always a valid
+  // action, whether to start it fresh or bring it back after it was closed.
+  grantBtn.textContent = cameraGranted ? "Open monitoring window" : "Grant camera access";
   if (cameraGranted) {
-    grantBtn.textContent = "Camera access granted";
-    grantBtn.disabled = true;
     statusDot.classList.add("active");
   }
+
   if (enabled === false) {
     enabledToggle.checked = false;
   }

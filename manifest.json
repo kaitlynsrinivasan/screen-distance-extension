@@ -3,7 +3,7 @@
   "name": "Screen Distance Reminder",
   "version": "0.1.0",
   "description": "Gently reminds you to sit back when you're too close to your screen, using on-device face detection. Video never leaves your device.",
-  "permissions": ["offscreen", "notifications", "storage", "alarms"],
+  "permissions": ["notifications", "storage", "alarms"],
   "background": {
     "service_worker": "background.js"
   },
