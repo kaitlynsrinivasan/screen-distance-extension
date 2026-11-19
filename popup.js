@@ -8,6 +8,7 @@
 const grantBtn = document.getElementById("grantBtn");
 const statusDot = document.getElementById("statusDot");
 const enabledToggle = document.getElementById("enabledToggle");
+const persistentToggle = document.getElementById("persistentToggle");
 const todayCount = document.getElementById("todayCount");
 
 grantBtn.addEventListener("click", () => {
@@ -21,13 +22,22 @@ grantBtn.addEventListener("click", () => {
 
 enabledToggle.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: enabledToggle.checked });
-  // TODO (step 3): tell monitor.js to pause/resume detection.
+  // TODO (step 4): tell monitor.js to pause/resume detection.
+});
+
+persistentToggle.addEventListener("change", async () => {
+  await chrome.storage.local.set({ persistentReminders: persistentToggle.checked });
 });
 
 // Restore saved state when the popup opens.
 (async function init() {
-  const { cameraGranted, enabled, todayReminderCount } =
-    await chrome.storage.local.get(["cameraGranted", "enabled", "todayReminderCount"]);
+  const { cameraGranted, enabled, persistentReminders, todayReminderCount } =
+    await chrome.storage.local.get([
+      "cameraGranted",
+      "enabled",
+      "persistentReminders",
+      "todayReminderCount",
+    ]);
 
   // Reflect whether camera access is currently working, but keep the button
   // clickable either way — reopening the monitor window is always a valid
@@ -40,5 +50,7 @@ enabledToggle.addEventListener("change", async () => {
   if (enabled === false) {
     enabledToggle.checked = false;
   }
+  // Off unless the user has explicitly turned it on.
+  persistentToggle.checked = persistentReminders === true;
   todayCount.textContent = todayReminderCount || 0;
 })();

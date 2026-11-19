@@ -6,8 +6,8 @@ when you're too close for too long. No video frame ever leaves your device.
 
 ## Status
 🚧 Step 2 in progress: face detection pipeline runs continuously (checking
-distance roughly once per second). Sustained-closeness detection works; 
-wiring it to real notifications is still to come.
+distance roughly once per second). The core loop works end-to-end; it 
+detects sustained closeness and sends a native notification. 
 
 ## Architecture
 
@@ -71,14 +71,33 @@ images.
 2. Click the extension icon, then click the button to open the monitoring window.
 3. In that window, click "Grant camera access" the first time; it's remembered after that.
 
+## Troubleshooting
+
+**I'm not seeing reminder notifications.** Notifications have to be allowed
+at the operating-system level, not just in Chrome. On macOS: open System
+Settings → Notifications → Google Chrome and turn on "Allow notifications".
+Also check that Focus / Do Not Disturb isn't on, since it silently hides
+notifications.
+
+**I want reminders to stay on screen until I move back.** Turn on
+"Persistent reminders" in the extension's popup. On macOS this needs one
+extra step: System Settings → Notifications may list Google Chrome twice
+(one entry for temporary notifications, one for persistent ones). Make sure
+"Allow notifications" is on for both. If persistent reminders are on and
+you see nothing at all, the persistent entry is the likely culprit.
+
 ## Roadmap
 - [x] Step 1: project scaffolding, manifest, popup UI
 - [x] Step 2a: face-api.js integrated, single-frame detection confirmed working
 - [x] Step 2b: continuous detection loop (checks distance every ~1s)
 - [x] Step 2c: calibration (save a personal baseline distance)
-- [x] Step 2d: sustained-closeness logic (avoid false alarms from one flickery frame)
-- [ ] Step 2e: wire the real `TOO_CLOSE_DETECTED` message to background.js
+- [x] Step 2d: sustained-closeness detection (avoid false alarms from one flickery frame)
+- [x] Step 2e: native reminder notification, cleared when the user moves back
 - [ ] Step 3: PostHog analytics wiring (5 events from the spec)
-- [ ] Step 4: sensitivity setting + daily summary wired up fully
+- [ ] Step 4: popup settings wired up
+  - [x] Opt-in persistent reminders setting
+  - [ ] "Reminders on" toggle pauses and resumes monitoring
+  - [ ] Sensitivity setting
+  - [ ] Daily reminder count
 - [ ] Step 5: Chrome Web Store listing + launch
 - [ ] Step 6: A/B test on reminder style, analyze, ship winner

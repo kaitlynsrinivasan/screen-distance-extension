@@ -62,33 +62,47 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Sends a message to background.js. The message is just a plain object:
+// `target` says who it's for, `type` says what happened.
+async function sendToBackground(type) {
+  try {
+    await chrome.runtime.sendMessage({ target: "background", type });
+  } catch (err) {
+    console.error(`[monitor] couldn't send ${type} message:`, err);
+  }
+}
+
 function updateBaselineText() {
   baselineText.textContent = baselineWidth
     ? `Baseline: ${baselineWidth.toFixed(1)}px`
     : "Not calibrated yet. Sit at a comfortable distance and click Calibrate.";
 }
 
+// Clears the closeness streak. Returns true if a reminder was showing at the
+// moment we cleared it, so callers know the notification needs to be removed.
 function resetClosenessTracking() {
+  const hadActiveReminder = reminderActive;
   consecutiveCloseChecks = 0;
   reminderActive = false;
+  return hadActiveReminder;
 }
 
-// Feeds one new reading into the sustained-closeness logic. Returns true
-// exactly once per "too close" stretch: the moment the user has been too
-// close for enough checks in a row. Every other call returns false.
+// Feeds one new reading into the sustained-closeness logic. Returns:
+//   "remind"   — the user has just been too close long enough: show a reminder
+//   "resolved" — the user just moved back while a reminder was showing
+//   null       — nothing to do this time
 function updateClosenessState(ratio) {
   if (ratio >= TOO_CLOSE_RATIO) {
     consecutiveCloseChecks += 1;
-  } else {
-    // Back at a safe distance: start over, and allow a future reminder.
-    resetClosenessTracking();
+    if (consecutiveCloseChecks >= SUSTAINED_CHECKS_REQUIRED && !reminderActive) {
+      reminderActive = true;
+      return "remind";
+    }
+    return null;
   }
 
-  if (consecutiveCloseChecks >= SUSTAINED_CHECKS_REQUIRED && !reminderActive) {
-    reminderActive = true;
-    return true;
-  }
-  return false;
+  // Back at a safe distance: start over, and allow a future reminder.
+  return resetClosenessTracking() ? "resolved" : null;
 }
 
 async function checkDistance() {
@@ -105,11 +119,12 @@ async function checkDistance() {
       const width = detection.box.width;
       if (baselineWidth) {
         const ratio = width / baselineWidth;
-        const shouldRemind = updateClosenessState(ratio);
+        const event = updateClosenessState(ratio);
 
-        if (shouldRemind) {
-          // TODO (step 2e): send a TOO_CLOSE_DETECTED message to background.js.
-          console.log("[monitor] sustained closeness detected — reminder would fire here");
+        if (event === "remind") {
+          sendToBackground("TOO_CLOSE_DETECTED");
+        } else if (event === "resolved") {
+          sendToBackground("BACK_AT_SAFE_DISTANCE");
         }
 
         let note = "";
@@ -124,9 +139,11 @@ async function checkDistance() {
         statusText.textContent = `Face detected — box width: ${width.toFixed(1)}px`;
       }
     } else {
-      // No face in view (user stepped away, say): don't count that toward
-      // closeness, and start fresh when they come back.
-      resetClosenessTracking();
+      // No face in view (user stepped away, say): they're no longer too
+      // close, so remove any showing reminder and start fresh on return.
+      if (resetClosenessTracking()) {
+        sendToBackground("BACK_AT_SAFE_DISTANCE");
+      }
       statusText.textContent = "No face detected — make sure you're visible to the camera.";
     }
   } catch (err) {
@@ -163,7 +180,9 @@ async function calibrate() {
     const total = samples.reduce((sum, width) => sum + width, 0);
     baselineWidth = total / samples.length;
     // A new baseline means any earlier "too close" count no longer applies.
-    resetClosenessTracking();
+    if (resetClosenessTracking()) {
+      sendToBackground("BACK_AT_SAFE_DISTANCE");
+    }
 
     await chrome.storage.local.set({ baselineWidth });
     updateBaselineText();

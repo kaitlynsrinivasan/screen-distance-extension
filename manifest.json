@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Screen Distance Reminder",
   "version": "0.1.0",
-  "description": "Gently reminds you to sit back when you're too close to your screen, using on-device face detection. Video never leaves your device.",
+  "description": "Gently reminds you to sit back when you're too close to your screen, using on-device face detection. Video never leaves your device. If you don’t see reminders, make sure notifications are enabled for Chrome in your system settings.",
   "permissions": ["notifications", "storage", "alarms"],
   "background": {
     "service_worker": "background.js"
