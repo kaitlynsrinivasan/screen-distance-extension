@@ -6,8 +6,8 @@ when you're too close for too long. No video frame ever leaves your device.
 
 ## Status
 🚧 Step 2 in progress: face detection pipeline runs continuously (checking
-distance roughly once per second). Calibration and the actual
-reminder-triggering logic are still to come.
+distance roughly once per second). The actual
+reminder-triggering logic is still to come.
 
 ## Architecture
 
@@ -75,7 +75,7 @@ images.
 - [x] Step 1: project scaffolding, manifest, popup UI
 - [x] Step 2a: face-api.js integrated, single-frame detection confirmed working
 - [x] Step 2b: continuous detection loop (checks distance every ~1s)
-- [ ] Step 2c: calibration (save a personal baseline distance)
+- [x] Step 2c: calibration (save a personal baseline distance)
 - [ ] Step 2d: sustained-closeness logic (avoid false alarms from one flickery frame)
 - [ ] Step 2e: wire the real `TOO_CLOSE_DETECTED` message to background.js
 - [ ] Step 3: PostHog analytics wiring (5 events from the spec)
