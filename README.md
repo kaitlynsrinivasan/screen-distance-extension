@@ -5,9 +5,9 @@ on-device webcam face detection, and nudges you with a native notification
 when you're too close for too long. No video frame ever leaves your device.
 
 ## Status
-🚧 Step 2 in progress: face detection pipeline runs continuously (checking
-distance roughly once per second). The core loop works end-to-end; it 
-detects sustained closeness and sends a native notification. 
+🚧 The core loop works end to end: calibrate, detect sustained closeness,
+send a notification, and clear it when you move back. Analytics and the
+remaining popup settings are still to come.
 
 ## Architecture
 
