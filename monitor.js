@@ -24,9 +24,23 @@ const CALIBRATION_SAMPLES = 5;
 const CALIBRATION_DELAY_MS = 500;
 const MIN_VALID_SAMPLES = 3; // need at least this many frames with a face found
 
+// "Too close" settings. A face looks wider on camera the closer it is, so we
+// compare the current face width to the calibrated baseline width. A ratio of
+// 1.15 means "your face looks 15% wider than at your normal distance".
+const TOO_CLOSE_RATIO = 1.15;
+// How many checks in a row (about one per second) must be "too close" before
+// we treat it as real. Keeps one flickery frame from causing a false alarm.
+const SUSTAINED_CHECKS_REQUIRED = 5;
+
 // The user's "normal distance", measured as face width in pixels. null means
 // they haven't calibrated yet.
 let baselineWidth = null;
+
+// Sustained-closeness tracking.
+let consecutiveCloseChecks = 0;
+// True once we've already reacted to the current "too close" stretch, so we
+// react once per stretch instead of once per second.
+let reminderActive = false;
 
 // Guards against overlapping work (see checkDistance / calibrate below).
 let isChecking = false;
@@ -54,6 +68,29 @@ function updateBaselineText() {
     : "Not calibrated yet. Sit at a comfortable distance and click Calibrate.";
 }
 
+function resetClosenessTracking() {
+  consecutiveCloseChecks = 0;
+  reminderActive = false;
+}
+
+// Feeds one new reading into the sustained-closeness logic. Returns true
+// exactly once per "too close" stretch: the moment the user has been too
+// close for enough checks in a row. Every other call returns false.
+function updateClosenessState(ratio) {
+  if (ratio >= TOO_CLOSE_RATIO) {
+    consecutiveCloseChecks += 1;
+  } else {
+    // Back at a safe distance: start over, and allow a future reminder.
+    resetClosenessTracking();
+  }
+
+  if (consecutiveCloseChecks >= SUSTAINED_CHECKS_REQUIRED && !reminderActive) {
+    reminderActive = true;
+    return true;
+  }
+  return false;
+}
+
 async function checkDistance() {
   // Skip this tick if the previous check is still running, or if the user is
   // mid-calibration (calibrate() is using the camera at that moment).
@@ -67,12 +104,29 @@ async function checkDistance() {
     if (detection) {
       const width = detection.box.width;
       if (baselineWidth) {
-        const percent = (width / baselineWidth) * 100;
-        statusText.textContent = `Face width: ${width.toFixed(1)}px (${percent.toFixed(0)}% of your baseline)`;
+        const ratio = width / baselineWidth;
+        const shouldRemind = updateClosenessState(ratio);
+
+        if (shouldRemind) {
+          // TODO (step 2e): send a TOO_CLOSE_DETECTED message to background.js.
+          console.log("[monitor] sustained closeness detected — reminder would fire here");
+        }
+
+        let note = "";
+        if (reminderActive) {
+          note = " — too close, sit back!";
+        } else if (consecutiveCloseChecks > 0) {
+          note = ` — getting close (${consecutiveCloseChecks}/${SUSTAINED_CHECKS_REQUIRED})`;
+        }
+        statusText.textContent =
+          `Face width: ${width.toFixed(1)}px (${(ratio * 100).toFixed(0)}% of your baseline)${note}`;
       } else {
         statusText.textContent = `Face detected — box width: ${width.toFixed(1)}px`;
       }
     } else {
+      // No face in view (user stepped away, say): don't count that toward
+      // closeness, and start fresh when they come back.
+      resetClosenessTracking();
       statusText.textContent = "No face detected — make sure you're visible to the camera.";
     }
   } catch (err) {
@@ -108,6 +162,8 @@ async function calibrate() {
 
     const total = samples.reduce((sum, width) => sum + width, 0);
     baselineWidth = total / samples.length;
+    // A new baseline means any earlier "too close" count no longer applies.
+    resetClosenessTracking();
 
     await chrome.storage.local.set({ baselineWidth });
     updateBaselineText();
@@ -122,7 +178,6 @@ async function calibrate() {
     calibrateBtn.disabled = false;
   }
 }
-
 
 async function startMonitoring() {
   try {
