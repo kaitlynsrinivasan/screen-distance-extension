@@ -11,6 +11,13 @@ const enabledToggle = document.getElementById("enabledToggle");
 const persistentToggle = document.getElementById("persistentToggle");
 const todayCount = document.getElementById("todayCount");
 
+// Tells background.js that a setting changed, so it can record the event.
+function reportSettingChange(setting, value) {
+  chrome.runtime
+    .sendMessage({ target: "background", type: "SETTING_CHANGED", setting, value })
+    .catch((err) => console.error("[popup] couldn't report setting change:", err));
+}
+
 grantBtn.addEventListener("click", () => {
   chrome.windows.create({
     url: chrome.runtime.getURL("monitor.html"),
@@ -22,11 +29,13 @@ grantBtn.addEventListener("click", () => {
 
 enabledToggle.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: enabledToggle.checked });
+  reportSettingChange("reminders_enabled", enabledToggle.checked);
   // TODO (step 4): tell monitor.js to pause/resume detection.
 });
 
 persistentToggle.addEventListener("change", async () => {
   await chrome.storage.local.set({ persistentReminders: persistentToggle.checked });
+  reportSettingChange("persistent_reminders", persistentToggle.checked);
 });
 
 // Restore saved state when the popup opens.

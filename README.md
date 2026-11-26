@@ -93,8 +93,10 @@ you see nothing at all, the persistent entry is the likely culprit.
 - [x] Step 2c: calibration (save a personal baseline distance)
 - [x] Step 2d: sustained-closeness detection (avoid false alarms from one flickery frame)
 - [x] Step 2e: native reminder notification, cleared when the user moves back
-- [ ] Step 3: PostHog analytics wiring (5 events from the spec)
-  - [x] PostHog pipeline working (extension_installed)
+- [ ] Step 3: PostHog analytics wiring
+  - [x] PostHog pipeline + `extension_installed`
+  - [x] `reminder_shown`, `reminder_resolved`, `settings_changed`, `daily_heartbeat`
+  - [ ] Verify retention and reminder-response reporting in PostHog
 - [ ] Step 4: popup settings wired up
   - [x] Opt-in persistent reminders setting
   - [ ] "Reminders on" toggle pauses and resumes monitoring
