@@ -4,6 +4,9 @@
 // pure dispatcher: it listens for messages from monitor.js and turns them
 // into native OS notifications.
 
+// Loads analytics.js into this file, making its `track` function available.
+importScripts("analytics.js");
+
 // A fixed ID means a new reminder replaces any existing one instead of
 // stacking up, and lets us remove that specific notification later.
 const REMINDER_NOTIFICATION_ID = "too-close-reminder";
@@ -35,6 +38,14 @@ async function showReminder() {
     }
   );
 }
+
+// Fires when the extension is first installed, updated, or reloaded. We only
+// count genuine first installs.
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "install") {
+    track("extension_installed");
+  }
+});
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.target !== "background") return;
